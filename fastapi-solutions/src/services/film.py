@@ -1,16 +1,16 @@
 import uuid
 from functools import lru_cache
-from http import HTTPStatus
+
+from elasticsearch import AsyncElasticsearch
 from pydantic import parse_obj_as
-from elasticsearch import AsyncElasticsearch, NotFoundError
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from redis.asyncio import Redis
 
-from src.core.logger import a_api_logger
-from src.db.elastic import get_elastic
 from src.db.cache import get_redis, CacheService
+
 from src.models.film import FullFilm, Genre, FilmBase
 from src.models.person import Person
+from src.db.elastic import ElasticSearchRepository, get_elastic
 from src.services.genre import GenreService, get_genre_service
 
 
@@ -26,7 +26,7 @@ class FilmService:
     ):
         self.index_name = index_name
         self.cache = CacheService(cache, self.index_name)
-        self.elastic = elastic
+        self.elastic = ElasticSearchRepository(elastic, self.index_name)
         self.genre_service = genre_service
 
     async def get_film_details(self, film_id: str) -> FullFilm | None:
@@ -36,7 +36,7 @@ class FilmService:
         film = await self.cache.get(cache_key)
 
         if not film:
-            film_data = await self.get_film_from_elastic(film_id)
+            film_data = await self.elastic.get(film_id)
             if not film_data:
                 return None
             film = await self.get_full_info(film_data)
@@ -48,17 +48,6 @@ class FilmService:
         film = FullFilm(**film)
 
         return film
-
-    async def get_film_from_elastic(self, film_id: str) -> dict | None:
-        """Получение фильмов по id фильма"""
-
-        try:
-            doc = await self.elastic.get(index=self.index_name, id=film_id)
-            film_data = doc["_source"]
-            return film_data
-        except NotFoundError as e:
-            a_api_logger.error(f"Фильм не найден: {e}")
-            return None
 
     async def get_full_info(self, film_data: dict) -> FullFilm:
         """Преобразование исходных данных фильма"""
@@ -96,7 +85,7 @@ class FilmService:
         cached_film_data = await self.cache.get(cache_key)
 
         if not cached_film_data:
-            film_data = await self.get_film_from_elastic(film_id)
+            film_data = await self.elastic.get(film_id)
             if not film_data:
                 return None
 
@@ -109,7 +98,7 @@ class FilmService:
                     }
                 }
             }
-            result = await self.elastic.search(index=self.index_name, body=query)
+            result = await self.elastic.search(query)
 
             films = [
                 parse_obj_as(FilmBase, hit["_source"]) for hit in result["hits"]["hits"]
@@ -129,7 +118,7 @@ class FilmService:
         page_size: int = 10,
     ) -> list[FilmBase]:
         """Получение всех фильмов с возможностью фильтрации по uuid жанра.
-        По умолчанию остортированы по убыванию imdb_rating"""
+        По умолчанию отсортированы по убыванию imdb_rating"""
 
         cache_key = await self.cache.cache_key_generation(
             genre=genre,
@@ -142,21 +131,12 @@ class FilmService:
         if not films:
             query = await self.construct_query(genre, sort, page_number, page_size)
 
-            try:
-                result = await self.elastic.search(index=self.index_name, body=query)
-                films = [FilmBase(**doc["_source"]) for doc in result["hits"]["hits"]]
+            result = await self.elastic.search(query)
+            films = [FilmBase(**doc["_source"]) for doc in result["hits"]["hits"]]
 
-                if films:
-                    await self.cache.set(cache_key, films)
-
+            if films:
+                await self.cache.set(cache_key, films)
                 return films
-            except Exception as e:
-                a_api_logger.error(f"Произошла непредвиденная ошибка:{e}")
-                raise HTTPException(
-                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                    detail=f"Произошла непредвиденная ошибка {e}",
-                )
-
         return [FilmBase(**data) for data in films]
 
     async def construct_query(
@@ -188,7 +168,7 @@ class FilmService:
         """Поиск фильмов"""
 
         query = await self.construct_query_for_search(search, page_number, page_size)
-        result = await self.elastic.search(index=self.index_name, body=query)
+        result = await self.elastic.search(query)
 
         film = [
             parse_obj_as(FilmBase, hit["_source"]) for hit in result["hits"]["hits"]
@@ -213,6 +193,38 @@ class FilmService:
             "size": page_size,
         }
         return query
+
+    async def get_films_for_persons(self, person_name: str) -> dict | None:
+        """Получение фильмов по персонам"""
+
+        ROLES = {
+            "directors_names": "director",
+            "actors_names": "actor",
+            "writers_names": "writer",
+        }
+
+        films = {}
+        for role in ROLES.keys():
+            query = {
+                "query": {
+                    "bool": {
+                        "should": [{"match": {role: person_name}}],
+                        "minimum_should_match": 1,
+                    }
+                }
+            }
+            result = await self.elastic.search(query)
+            if result:
+                for film in result["hits"]["hits"]:
+                    film = film["_source"]
+                    if film["id"] not in films:
+                        films[film["id"]] = {}
+                        films[film["id"]]["roles"] = [ROLES[role]]
+                        films[film["id"]]["title"] = film["title"]
+                        films[film["id"]]["imdb_rating"] = film["imdb_rating"]
+                    else:
+                        films[film["id"]]["roles"].append(ROLES[role])
+        return films
 
 
 @lru_cache()
