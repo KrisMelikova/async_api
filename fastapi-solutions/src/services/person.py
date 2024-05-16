@@ -88,29 +88,34 @@ class PersonService:
         person_films = await self.cache.get(cache_key)
 
         if not person_films:
-            result = await self.elastic.get(person_id)
-            films = await self.film_service.get_films_for_persons(result["full_name"])
-            person_films = [
-                PersonFilmWithRating(
-                    uuid=film[0],
-                    title=film[1]["title"],
-                    imdb_rating=film[1]["imdb_rating"],
+            person_films = await self.elastic.get(person_id)
+            if person_films:
+                films = await self.film_service.get_films_for_persons(
+                    person_films["full_name"]
                 )
-                for film in films.items()
-            ]
-            await self.cache.set(cache_key, person_films)
-
+                person_films = [
+                    PersonFilmWithRating(
+                        uuid=film[0],
+                        title=film[1]["title"],
+                        imdb_rating=film[1]["imdb_rating"],
+                    )
+                    for film in films.items()
+                ]
+                await self.cache.set(cache_key, person_films)
         return person_films
 
     async def _get_person_from_elastic(self, person_id: uuid) -> PersonWithFilms | None:
         result = await self.elastic.get(person_id)
-        films = await self.film_service.get_films_for_persons(result["full_name"])
-        person_films = [
-            PersonFilm(uuid=film[0], roles=film[1]["roles"]) for film in films.items()
-        ]
-        return PersonWithFilms(
-            uuid=result["id"], full_name=result["full_name"], films=person_films
-        )
+        if result:
+            films = await self.film_service.get_films_for_persons(result["full_name"])
+            person_films = [
+                PersonFilm(uuid=film[0], roles=film[1]["roles"])
+                for film in films.items()
+            ]
+            return PersonWithFilms(
+                uuid=result["id"], full_name=result["full_name"], films=person_films
+            )
+        return None
 
 
 @lru_cache()

@@ -1,5 +1,8 @@
+from abc import ABC, abstractmethod
+
 from elastic_transport import ObjectApiResponse
 from elasticsearch import AsyncElasticsearch, NotFoundError
+
 from src.core.logger import a_api_logger
 
 es: AsyncElasticsearch | None = None
@@ -9,12 +12,24 @@ async def get_elastic() -> AsyncElasticsearch:
     return es
 
 
-class ElasticSearchRepository:
-    """Репозиторий для работы с Elasticsearch"""
+class AbstractElasticsearchRepository(ABC):
+    """Абстрактный репозиторий Elasticsearch"""
 
     def __init__(self, elastic: AsyncElasticsearch, index: str):
         self.elastic = elastic
         self.index = index
+
+    @abstractmethod
+    async def get(self, id_: str) -> dict[str, any] | None:
+        """Получение сущности по ID"""
+
+    @abstractmethod
+    async def search(self, query: dict) -> ObjectApiResponse | None:
+        """Поиск сущностей по запросу"""
+
+
+class ElasticSearchRepository(AbstractElasticsearchRepository, ABC):
+    """Репозиторий для работы с Elasticsearch"""
 
     async def get(self, id_: str) -> dict[str, any] | None:
         """Получение сущности по ID"""
