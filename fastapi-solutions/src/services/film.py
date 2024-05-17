@@ -6,7 +6,7 @@ from pydantic import parse_obj_as
 from fastapi import Depends
 from redis.asyncio import Redis
 
-from src.db.cache import get_redis, CacheService
+from src.db.cache import get_redis, AsyncCacheService
 
 from src.models.film import FullFilm, Genre, FilmBase
 from src.models.person import Person
@@ -25,7 +25,7 @@ class FilmService:
         index_name: str = "movies",
     ):
         self.index_name = index_name
-        self.cache = CacheService(cache, self.index_name)
+        self.cache = AsyncCacheService(cache, self.index_name)
         self.elastic = ElasticSearchRepository(elastic, self.index_name)
         self.genre_service = genre_service
 
@@ -33,7 +33,7 @@ class FilmService:
         """Получение полной информации по фильму"""
 
         cache_key = await self.cache.cache_key_generation(film_uuid=film_id)
-        film = await self.cache.get(cache_key)
+        film = await self.cache.get_single_record(cache_key)
 
         if not film:
             film_data = await self.elastic.get(film_id)
@@ -41,7 +41,7 @@ class FilmService:
                 return None
             film = await self.get_full_info(film_data)
 
-            await self.cache.set(cache_key, film)
+            await self.cache.set_single_record(cache_key, film)
 
             return film
 
@@ -82,7 +82,7 @@ class FilmService:
         cache_key = await self.cache.cache_key_generation(
             film_uuid=film_id, similar="similar"
         )
-        cached_film_data = await self.cache.get(cache_key)
+        cached_film_data = await self.cache.get_list_of_records(cache_key)
 
         if not cached_film_data:
             film_data = await self.elastic.get(film_id)
@@ -104,7 +104,7 @@ class FilmService:
                 parse_obj_as(FilmBase, hit["_source"]) for hit in result["hits"]["hits"]
             ]
 
-            await self.cache.set(cache_key, films)
+            await self.cache.set_list_of_records(cache_key, films)
 
             return films
 
@@ -126,7 +126,7 @@ class FilmService:
             page_number=page_number,
             page_size=page_size,
         )
-        films = await self.cache.get(cache_key)
+        films = await self.cache.get_list_of_records(cache_key)
 
         if not films:
             query = await self.construct_query(genre, sort, page_number, page_size)
@@ -135,7 +135,7 @@ class FilmService:
             films = [FilmBase(**doc["_source"]) for doc in result["hits"]["hits"]]
 
             if films:
-                await self.cache.set(cache_key, films)
+                await self.cache.set_list_of_records(cache_key, films)
                 return films
         return [FilmBase(**data) for data in films]
 

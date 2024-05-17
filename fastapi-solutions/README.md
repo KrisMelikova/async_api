@@ -33,7 +33,7 @@ docker-compose up --build -d
 
 4. pip3 install poetry
 
-5. poetry install
+5. poetry install (or python -m poetry install)
 
 6. docker run -p 9200:9200 -e "discovery.type=single-node" -e "xpack.security.enabled=false" krissmelikova/awesome_repository:v1
 
