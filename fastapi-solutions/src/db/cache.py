@@ -98,9 +98,7 @@ class AsyncCacheService(BaseAsyncCacheService):
         """Сохранение единичной записи в кеш"""
 
         try:
-            await self.cache.set(
-                key, value.json(), ex=config.cache_expire_in_seconds
-            )
+            await self.cache.set(key, value.json(), ex=config.cache_expire_in_seconds)
         except Exception as exc:
             a_api_logger.error(f"Ошибка при записи по ключу {key} в кеш: {exc}")
 
