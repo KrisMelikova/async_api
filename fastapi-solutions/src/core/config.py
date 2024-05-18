@@ -1,12 +1,8 @@
 from functools import lru_cache
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
+
 from dotenv import load_dotenv
-
-from logging import config as logging_config
-from src.core.logger import LOGGING
-
-logging_config.dictConfig(LOGGING)
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
