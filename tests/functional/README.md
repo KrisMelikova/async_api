@@ -57,7 +57,7 @@ python3 -m pytest
 ```
 Запустить все тесты в конкретном файле
 ```
-python3 -m pytest src/test_genre.py
+python3 -m pytest src/<file with tests>
 ```
 
 Запустить один конкретный тест
