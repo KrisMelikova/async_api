@@ -148,8 +148,7 @@ class FilmService:
     ) -> dict:
         """Создание запроса на получение фильмов с фильтрацией по жанру из Elasticsearch"""
 
-        sort_direction = "asc" if not sort.startswith("-") else "desc"
-        sort_field = sort[1:] if sort_direction == "desc" else sort
+        sort_direction, sort_field = self.sort(sort)
 
         query = {
             "query": {"match_all": {}},
@@ -225,6 +224,12 @@ class FilmService:
                     else:
                         films[film["id"]]["roles"].append(ROLES[role])
         return films
+
+    @staticmethod
+    def sort(sort: str) -> tuple[str, str]:
+        sort_direction = "asc" if not sort.startswith("-") else "desc"
+        sort_field = sort[1:] if sort_direction == "desc" else sort
+        return sort_direction, sort_field
 
 
 @lru_cache()
