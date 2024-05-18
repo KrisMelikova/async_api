@@ -8,7 +8,7 @@ from elasticsearch import NotFoundError, AsyncElasticsearch
 from redis.asyncio import Redis
 
 from src.core.logger import a_api_logger
-from src.db.cache import get_redis, CacheService
+from src.db.cache import get_redis, AsyncCacheService
 from src.models.person import PersonWithFilms, PersonFilm, PersonFilmWithRating
 from src.db.elastic import ElasticSearchRepository, get_elastic
 from src.services.film import FilmService, get_film_service
@@ -23,13 +23,13 @@ class PersonService:
         index_name: str = "persons",
     ):
         self.index_name = index_name
-        self.cache = CacheService(cache, self.index_name)
+        self.cache = AsyncCacheService(cache, self.index_name)
         self.elastic = ElasticSearchRepository(elastic, self.index_name)
         self.film_service = film_service
 
     async def get_by_id(self, person_id: str) -> Optional[PersonWithFilms]:
         cache_key = await self.cache.cache_key_generation(person_uuid=person_id)
-        person = await self.cache.get(cache_key)
+        person = await self.cache.get_single_record(cache_key)
 
         if not person:
             person = await self._get_person_from_elastic(person_id)
@@ -37,7 +37,7 @@ class PersonService:
                 a_api_logger.info("Not found person")
                 return None
 
-            await self.cache.set(cache_key, person)
+            await self.cache.set_single_record(cache_key, person)
 
         return person
 
@@ -85,7 +85,7 @@ class PersonService:
         cache_key = await self.cache.cache_key_generation(
             person_uuid=person_id, movie="movie"
         )
-        person_films = await self.cache.get(cache_key)
+        person_films = await self.cache.get_list_of_records(cache_key)
 
         if not person_films:
             person_films = await self.elastic.get(person_id)
@@ -101,7 +101,7 @@ class PersonService:
                     )
                     for film in films.items()
                 ]
-                await self.cache.set(cache_key, person_films)
+                await self.cache.set_list_of_records(cache_key, person_films)
         return person_films
 
     async def _get_person_from_elastic(self, person_id: uuid) -> PersonWithFilms | None:

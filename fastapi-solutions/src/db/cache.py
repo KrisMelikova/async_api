@@ -1,3 +1,4 @@
+from abc import abstractmethod, ABC
 from typing import Any
 
 from orjson import orjson
@@ -5,6 +6,7 @@ from redis.asyncio import Redis
 
 from src.core.config import config
 from src.core.logger import a_api_logger
+from src.models.model_config import BaseOrjsonModel
 from src.utils.orjson_dumps import orjson_dumps
 
 redis: Redis | None = None
@@ -14,7 +16,29 @@ async def get_redis() -> Redis:
     return redis
 
 
-class CacheService:
+class BaseAsyncCacheService(ABC):
+    @abstractmethod
+    async def cache_key_generation(self, **kwargs):
+        pass
+
+    @abstractmethod
+    async def get_single_record(self, key):
+        pass
+
+    @abstractmethod
+    async def get_list_of_records(self, key):
+        pass
+
+    @abstractmethod
+    async def set_single_record(self, key, value):
+        pass
+
+    @abstractmethod
+    async def set_list_of_records(self, key, value):
+        pass
+
+
+class AsyncCacheService(BaseAsyncCacheService):
     """Имплементация класса для кеширования данных"""
 
     def __init__(self, cache: Redis, index: str):
@@ -34,8 +58,8 @@ class CacheService:
 
         return prepared_key
 
-    async def get(self, key) -> Any:
-        """Получение данных из кеша"""
+    async def get_data_from_cache(self, key: str) -> Any:
+        """Получение данных из кеша по ключу"""
 
         try:
             data = await self.cache.get(key)
@@ -48,23 +72,44 @@ class CacheService:
         if not data:
             return None
 
-        if isinstance(data := orjson.loads(data), list):
-            return [orjson.loads(item) for item in data]
+        return orjson.loads(data)
+
+    async def get_single_record(self, key: str) -> Any:
+        """Получение данных о единичной записи из кеша по ключу"""
+
+        data = await self.get_data_from_cache(key)
+
+        if not data:
+            return None
+
         return data
 
-    async def set(self, key, value) -> None:
-        """Сохранение данных в кеш"""
+    async def get_list_of_records(self, key: str) -> Any:
+        """Получение данных о списке записей из кеша по ключу"""
+
+        data = await self.get_data_from_cache(key)
+
+        if not data:
+            return None
+
+        return [orjson.loads(item) for item in data]
+
+    async def set_single_record(self, key: str, value: BaseOrjsonModel) -> None:
+        """Сохранение единичной записи в кеш"""
 
         try:
-            if isinstance(value, list):
-                await self.cache.set(
-                    key,
-                    orjson_dumps([item.json() for item in value], default=list),
-                    ex=config.cache_expire_in_seconds,
-                )
-            else:
-                await self.cache.set(
-                    key, value.json(), ex=config.cache_expire_in_seconds
-                )
+            await self.cache.set(key, value.json(), ex=config.cache_expire_in_seconds)
+        except Exception as exc:
+            a_api_logger.error(f"Ошибка при записи по ключу {key} в кеш: {exc}")
+
+    async def set_list_of_records(self, key: str, value: list[BaseOrjsonModel]) -> None:
+        """Сохранение списка записей в кеш"""
+
+        try:
+            await self.cache.set(
+                key,
+                orjson_dumps([item.json() for item in value], default=list),
+                ex=config.cache_expire_in_seconds,
+            )
         except Exception as exc:
             a_api_logger.error(f"Ошибка при записи по ключу {key} в кеш: {exc}")

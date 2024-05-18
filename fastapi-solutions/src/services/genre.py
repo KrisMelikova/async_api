@@ -7,7 +7,7 @@ from fastapi import Depends
 from redis.asyncio import Redis
 
 from src.core.logger import a_api_logger
-from src.db.cache import get_redis, CacheService
+from src.db.cache import get_redis, AsyncCacheService
 from src.models.genre import Genre
 from src.db.elastic import ElasticSearchRepository, get_elastic
 
@@ -22,14 +22,14 @@ class GenreService:
         index_name: str = "genres",
     ):
         self.index_name = index_name
-        self.cache = CacheService(cache, self.index_name)
+        self.cache = AsyncCacheService(cache, self.index_name)
         self.elastic = ElasticSearchRepository(elastic, self.index_name)
 
     async def get_genre(self, genre_uuid: str) -> Genre | None:
         """Получение информации по конкретному жанру по его uuid"""
 
         cache_key = await self.cache.cache_key_generation(genre_uuid=genre_uuid)
-        genre = await self.cache.get(cache_key)
+        genre = await self.cache.get_single_record(cache_key)
 
         if not genre:
             genre = await self.elastic.get(genre_uuid)
@@ -40,7 +40,7 @@ class GenreService:
 
             genre = Genre(**genre)
 
-            await self.cache.set(cache_key, genre)
+            await self.cache.set_single_record(cache_key, genre)
 
         return genre
 
@@ -51,7 +51,7 @@ class GenreService:
             page_number=page_number,
             page_size=page_size,
         )
-        genres = await self.cache.get(cache_key)
+        genres = await self.cache.get_list_of_records(cache_key)
 
         if not genres:
             genres = await self.get_all_genres_from_elastic(
@@ -61,7 +61,7 @@ class GenreService:
             if not genres:
                 return None
 
-            await self.cache.set(cache_key, genres)
+            await self.cache.set_list_of_records(cache_key, genres)
 
         return genres
 
