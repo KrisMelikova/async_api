@@ -8,12 +8,12 @@ from redis.asyncio import Redis
 
 from src.core.logger import a_api_logger
 from src.db.cache import get_redis, AsyncCacheService
-from src.models.genre import Genre
 from src.db.elastic import ElasticSearchRepository, get_elastic
+from src.models.genre import Genre
 
 
 class GenreService:
-    """Класс, который позволяет вернуть данные о жанрах"""
+    """Класс, позволяющий вернуть данные о жанрах"""
 
     def __init__(
         self,
@@ -89,9 +89,7 @@ class GenreService:
         """Получение списка жанров из поисковой системы"""
 
         query = await self.construct_query_for_genres_list(page_size, page_number)
-
         es_response = await self.elastic.search(query)
-
         genres = await self.parse_result_w_genres_list(es_response)
 
         return genres
