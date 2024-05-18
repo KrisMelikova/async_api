@@ -20,19 +20,6 @@ pytest = "^6.1.2"
 pytest-asyncio = "^0.12.0"
 aiohttp ="^3.7.2"
 
-
-[tool.pytest.ini_options]
-pythonpath = "."
-asyncio_mode = "auto"
-addopts = "--strict-markers --verbose  --showlocals --tb=short"
-filterwarnings = [
-    "ignore::DeprecationWarning",
-]
-env = [
-    "SOMETHING_PORT=0"
-]
-
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
