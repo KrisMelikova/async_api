@@ -2,15 +2,14 @@ import uuid
 from functools import lru_cache
 from typing import Optional
 
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
-
-from elasticsearch import NotFoundError, AsyncElasticsearch
 from redis.asyncio import Redis
 
 from src.core.logger import a_api_logger
 from src.db.cache import get_redis, AsyncCacheService
-from src.models.person import PersonWithFilms, PersonFilm, PersonFilmWithRating
 from src.db.elastic import ElasticSearchRepository, get_elastic
+from src.models.person import PersonWithFilms, PersonFilm, PersonFilmWithRating
 from src.services.film import FilmService, get_film_service
 
 
@@ -28,13 +27,15 @@ class PersonService:
         self.film_service = film_service
 
     async def get_by_id(self, person_id: str) -> Optional[PersonWithFilms]:
+        """Получение данных о персоне по ее id"""
+
         cache_key = await self.cache.cache_key_generation(person_uuid=person_id)
         person = await self.cache.get_single_record(cache_key)
 
         if not person:
             person = await self._get_person_from_elastic(person_id)
             if not person:
-                a_api_logger.info("Not found person")
+                a_api_logger.info(f"Персона с id {person_id} не найдена")
                 return None
 
             await self.cache.set_single_record(cache_key, person)
@@ -44,9 +45,11 @@ class PersonService:
     async def search_for_a_person(
         self, query: str, page_number: int = 1, page_size: int = 10
     ):
+        """Полнотекcтовый поиск для персон"""
         try:
             query = await self._construct_query(query, page_number, page_size)
             doc = await self.elastic.search(query)
+
             persons_list = []
             for hit in doc["hits"]["hits"]:
                 films = await self.film_service.get_films_for_persons(
@@ -64,6 +67,7 @@ class PersonService:
                     ).dict()
                 )
         except NotFoundError:
+            a_api_logger.info(f"Для запроса {query} по персонам ничего не найдено")
             return None
         return persons_list
 
@@ -74,6 +78,7 @@ class PersonService:
         page_size: int = 10,
     ) -> dict:
         """Создание запроса для выполнения к индексу Elasticsearch"""
+
         query = {
             "query": {"match": {"full_name": {"query": query, "fuzziness": "auto"}}},
             "from": (page_number - 1) * page_size,
@@ -81,7 +86,11 @@ class PersonService:
         }
         return query
 
-    async def get_only_person_films(self, person_id: uuid) -> PersonWithFilms | None:
+    async def get_only_person_films(
+        self, person_id: uuid
+    ) -> list[PersonFilmWithRating] | None:
+        """Получение фильмов персоны по ее id"""
+
         cache_key = await self.cache.cache_key_generation(
             person_uuid=person_id, movie="movie"
         )
@@ -105,6 +114,8 @@ class PersonService:
         return person_films
 
     async def _get_person_from_elastic(self, person_id: uuid) -> PersonWithFilms | None:
+        """Получение персоны из поисковой системы"""
+
         result = await self.elastic.get(person_id)
         if result:
             films = await self.film_service.get_films_for_persons(result["full_name"])

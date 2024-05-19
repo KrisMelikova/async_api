@@ -13,6 +13,12 @@ from src.models.person import Person
 from src.db.elastic import ElasticSearchRepository, get_elastic
 from src.services.genre import GenreService, get_genre_service
 
+ROLES = {
+    "directors_names": "director",
+    "actors_names": "actor",
+    "writers_names": "writer",
+}
+
 
 class FilmService:
     """Класс, который позволяет вернуть данные о фильмах"""
@@ -195,12 +201,6 @@ class FilmService:
 
     async def get_films_for_persons(self, person_name: str) -> dict | None:
         """Получение фильмов по персонам"""
-
-        ROLES = {
-            "directors_names": "director",
-            "actors_names": "actor",
-            "writers_names": "writer",
-        }
 
         films = {}
         for role in ROLES.keys():
