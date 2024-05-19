@@ -1,0 +1,48 @@
+services:
+  base:
+    build:
+      context: ../../fastapi-solutions
+      dockerfile: Dockerfile
+      target: builder
+    image: fastapi-image
+    env_file:
+      ../../fastapi-solutions/.env
+
+  tests:
+    build: .
+    depends_on:
+      base:
+        condition: service_completed_successfully
+
+    entrypoint: >
+      python3 /tests/functional/utils/wait_for_es.py
+      && python3 /tests/functional/utils/wait_for_redis.py
+      && pytest /tests/functional/src"
+
+  search:
+    image: krissmelikova/awesome_repository:v1
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=false
+    healthcheck:
+       test: curl -s http://fastapi-solutions-search-1:9200
+       interval: 30s
+       timeout: 10s
+       retries: 50
+    networks:
+      - testnetwork
+
+  cache:
+    image: redis:7.2.4-alpine
+    env_file:
+      ../../fastapi-solutions/.env
+    volumes:
+     - ../../fastapi-solutions/redis-data:/var/lib/redis
+    networks:
+      - testnetwork
+
+
+
+networks:
+  testnetwork:
