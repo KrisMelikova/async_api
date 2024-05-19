@@ -9,7 +9,7 @@ services:
   service:
     build: ../../fastapi-solutions
     env_file:
-      - path: ../../fastapi-solutions/.env
+      - ../../fastapi-solutions/.env
     restart: always
     depends_on:
       search:
@@ -55,7 +55,7 @@ services:
   cache:
     image: redis:7.2.4-alpine
     env_file:
-      - path: ../../fastapi-solutions/.env
+      - ../../fastapi-solutions/.env
     volumes:
      - ../../fastapi-solutions/redis-data:/var/lib/redis
     networks:
