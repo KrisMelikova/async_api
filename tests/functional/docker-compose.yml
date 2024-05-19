@@ -6,13 +6,17 @@ services:
       target: builder
     image: fastapi-image
     env_file:
-      ../../fastapi-solutions/.env
+      .env_test
 
   tests:
     build: .
     depends_on:
       base:
         condition: service_completed_successfully
+      search:
+        condition: service_started
+      cache:
+        condition: service_started
     networks:
       - testnetwork
 

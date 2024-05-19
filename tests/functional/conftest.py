@@ -6,7 +6,7 @@ import aiohttp
 import pytest
 from redis.asyncio import Redis
 
-from settings import test_settings
+from .settings import test_settings
 
 
 @pytest.fixture(scope="session")
