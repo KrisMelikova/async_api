@@ -5,18 +5,36 @@ services:
       dockerfile: Dockerfile
       target: builder
     image: fastapi-image
+
+  service:
+    build: ../../fastapi-solutions
     env_file:
-      .env_test
+      - path: ../../fastapi-solutions/.env
+    restart: always
+    depends_on:
+      search:
+        condition: service_started
+      cache:
+        condition: service_started
+    networks:
+      - testnetwork
 
   tests:
     build: .
     depends_on:
       base:
         condition: service_completed_successfully
+      service:
+        condition: service_started
       search:
         condition: service_started
       cache:
         condition: service_started
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      ELASTIC_HOST: ${ELASTIC_HOST}
+      ELASTIC_PORT: ${ELASTIC_PORT}
     networks:
       - testnetwork
 
@@ -37,7 +55,7 @@ services:
   cache:
     image: redis:7.2.4-alpine
     env_file:
-      ../../fastapi-solutions/.env
+      - path: ../../fastapi-solutions/.env
     volumes:
      - ../../fastapi-solutions/redis-data:/var/lib/redis
     networks:
