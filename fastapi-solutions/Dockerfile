@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bullseye
+FROM python:3.12-slim-bullseye AS builder
 
 WORKDIR /opt/app
 
@@ -11,6 +11,8 @@ RUN poetry config virtualenvs.create false && poetry install
 
 COPY . .
 
+
+FROM builder AS service
 
 RUN groupadd -r web && useradd -d /opt/app-r -g web web \
      && chown web:web -R /opt/app
