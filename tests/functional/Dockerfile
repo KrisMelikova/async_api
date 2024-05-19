@@ -8,4 +8,6 @@ RUN poetry config virtualenvs.create false && poetry install
 
 COPY . .
 
-CMD ["/tests/functional/commands.sh"]
+RUN chmod u+x commands.sh
+
+CMD ["/bin/sh", "/tests/functional/commands.sh"]
