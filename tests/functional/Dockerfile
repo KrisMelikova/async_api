@@ -8,4 +8,4 @@ RUN poetry config virtualenvs.create false && poetry install
 
 COPY . .
 
-CMD ["pytest"]
+CMD ["/tests/functional/commands.sh"]

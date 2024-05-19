@@ -14,11 +14,6 @@ services:
       base:
         condition: service_completed_successfully
 
-    entrypoint: >
-      python3 /tests/functional/utils/wait_for_es.py
-      && python3 /tests/functional/utils/wait_for_redis.py
-      && pytest /tests/functional/src"
-
   search:
     image: krissmelikova/awesome_repository:v1
     environment:
