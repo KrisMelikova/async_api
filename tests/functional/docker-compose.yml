@@ -13,6 +13,8 @@ services:
     depends_on:
       base:
         condition: service_completed_successfully
+    networks:
+      - testnetwork
 
   search:
     image: krissmelikova/awesome_repository:v1

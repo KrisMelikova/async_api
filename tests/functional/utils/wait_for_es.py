@@ -1,11 +1,18 @@
 import time
-
+import logging
 from elasticsearch import Elasticsearch
+from elastic_transport import ConnectionError
 
 if __name__ == '__main__':
-    es_client = Elasticsearch(hosts='http://search-1:9200', verify_certs=False)
+
+
     while True:
-        print("Pinging Elastic")
-        if es_client.ping():
-            break
+        logging.info("Pinging Elastic")
+        try:
+            es_client = Elasticsearch(hosts='http://search:9200', verify_certs=False)
+            if es_client.ping():
+                logging.info("The connection is established")
+                break
+        except:
+            logging.warning("Failed to establish connection...")
         time.sleep(1)
