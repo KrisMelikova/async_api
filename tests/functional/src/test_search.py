@@ -1,74 +1,83 @@
-#
-# import datetime
-# import uuid
-#
-# import aiohttp
-# import pytest
-# from elasticsearch import AsyncElasticsearch
-# from elasticsearch.helpers import async_bulk
-#
-# from tests.functional.settings import test_settings
-#
-# #  Название теста должно начинаться со слова `test_`
-# #  Любой тест с асинхронными вызовами нужно оборачивать декоратором `pytest.mark.asyncio`, который следит за запуском и работой цикла событий.
-#
-# @pytest.mark.asyncio
-# async def test_search():
-#
-#     # 1. Генерируем данные для ES
-#     es_data = [{
-#         'id': str(uuid.uuid4()),
-#         'imdb_rating': 8.5,
-#         'genre': ['Action', 'Sci-Fi'],
-#         'title': 'The Star',
-#         'description': 'New World',
-#         'director': ['Stan'],
-#         'actors_names': ['Ann', 'Bob'],
-#         'writers_names': ['Ben', 'Howard'],
-#         'actors': [
-#             {'id': 'ef86b8ff-3c82-4d31-ad8e-72b69f4e3f95', 'name': 'Ann'},
-#             {'id': 'fb111f22-121e-44a7-b78f-b19191810fbf', 'name': 'Bob'}
-#         ],
-#         'writers': [
-#             {'id': 'caf76c67-c0fe-477e-8766-3ab3ff2574b5', 'name': 'Ben'},
-#             {'id': 'b45bd7bc-2e16-46d5-b125-983d356768c6', 'name': 'Howard'}
-#         ],
-#         'created_at': datetime.datetime.now().isoformat(),
-#         'updated_at': datetime.datetime.now().isoformat(),
-#         'film_work_type': 'movie'
-#     } for _ in range(60)]
-#
-#     bulk_query: list[dict] = []
-#     for row in es_data:
-#         data = {'_index': 'movies', '_id': row['id']}
-#         data.update({'_source': row})
-#         bulk_query.append(data)
-#
-#     # 2. Загружаем данные в ES
-#     es_client = AsyncElasticsearch(hosts=test_settings.es_host, verify_certs=False)
-#     if await es_client.indices.exists(index=test_settings.es_index):
-#         await es_client.indices.delete(index=test_settings.es_index)
-#     await es_client.indices.create(index=test_settings.es_index, **test_settings.es_index_mapping)
-#
-#     updated, errors = await async_bulk(client=es_client, actions=bulk_query)
-#
-#     await es_client.close()
-#
-#     if errors:
-#         raise Exception('Ошибка записи данных в Elasticsearch')
-#
-#     # 3. Запрашиваем данные из ES по API
-#
-#     session = aiohttp.ClientSession()
-#     url = test_settings.service_url + '/api/v1/search'
-#     query_data = {'search': 'The Star'}
-#     async with session.get(url, params=query_data) as response:
-#         body = await response.json()
-#         headers = response.headers
-#         status = response.status
-#     await session.close()
-#
-#     # 4. Проверяем ответ
-#
-#     assert status == 200
-#     assert len(body) == 50
+import pytest
+
+from testdata.persons.search_data import (
+    persons_search_data,
+    persons_search_data_for_pagination,
+)
+
+pytestmark = pytest.mark.asyncio
+
+PERSON_ENDPOINT = "persons"
+
+
+# Tests for person search
+
+async def test_persons_search_success(make_get_request):
+    query = "Scholz"
+
+    status, response = await make_get_request(
+        endpoint=PERSON_ENDPOINT + f"/search?query={query}",
+    )
+
+    assert status == 200
+    assert len(response) == 2
+    assert response == persons_search_data
+
+
+async def test_persons_search_not_found(make_get_request):
+    query = "Something"
+
+    status, response = await make_get_request(
+        endpoint=PERSON_ENDPOINT + f"/search?query={query}",
+    )
+
+    assert status == 200
+    assert len(response) == 0
+    assert response == []
+
+
+async def test_person_search_pagination(make_get_request):
+    query = "Kate"
+    params = {
+        "page_number": 1,
+        "page_size": 5,
+    }
+
+    status, response = await make_get_request(
+        endpoint=PERSON_ENDPOINT + f"/search?query={query}",
+        params=params,
+    )
+
+    assert status == 200
+    assert len(response) == params["page_size"]
+    assert response == persons_search_data_for_pagination
+
+
+async def test_person_search_page_number_error(make_get_request):
+    query = "Kate"
+    params = {
+        "page_number": -5,
+        "page_size": 5,
+    }
+
+    status, response = await make_get_request(
+        endpoint=PERSON_ENDPOINT + f"/search?query={query}", params=params,
+    )
+
+    assert status == 422
+    assert response["detail"][0]["msg"] == "Input should be greater than or equal to 1"
+
+
+async def test_person_search_page_size_error(make_get_request):
+    query = "Kate"
+    params = {
+        "page_number": 1,
+        "page_size": 200,
+    }
+
+    status, response = await make_get_request(
+        endpoint=PERSON_ENDPOINT + f"/search?query={query}", params=params,
+    )
+
+    assert status == 422
+    assert response["detail"][0]["msg"] == "Input should be less than or equal to 100"

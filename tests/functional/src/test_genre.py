@@ -2,6 +2,8 @@ import json
 
 import pytest
 
+from testdata.genres.genres_data import genres_paginated_data
+
 # весь файл с тестами запустится в асинхронном режиме
 pytestmark = pytest.mark.asyncio
 
@@ -14,6 +16,7 @@ async def test_get_all_genres_success(clean_cache, make_get_request):
 
     assert status == 200
     assert len(response) == GENRES_PAGE_SIZE
+    assert response == genres_paginated_data
 
 
 async def test_get_genre_by_id_success(clean_cache, make_get_request):
