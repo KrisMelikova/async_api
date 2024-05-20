@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from tests.functional.testdata.genres.genres_data import genres_paginated_data
+from testdata.genres.genres_data import genres_paginated_data
 
 # весь файл с тестами запустится в асинхронном режиме
 pytestmark = pytest.mark.asyncio
