@@ -1,7 +1,8 @@
 import pytest
 
-from tests.functional.testdata.persons.search_data import (
-    persons_search_data, persons_search_data_for_pagination,
+from testdata.persons.search_data import (
+    persons_search_data,
+    persons_search_data_for_pagination,
 )
 
 pytestmark = pytest.mark.asyncio
