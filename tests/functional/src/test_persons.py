@@ -1,11 +1,14 @@
 import json
+
 import pytest
+
 from testdata.mapping import Person
 
 # весь файл с тестами запустится в асинхронном режиме
 pytestmark = pytest.mark.asyncio
 
 ENDPOINT = "persons"
+
 
 async def test_get_persons_by_id_success(clean_cache, make_get_request):
     test_person_id = "46c7d430-c1bf-46df-8632-e49e29ee0033"
@@ -18,6 +21,7 @@ async def test_get_persons_by_id_success(clean_cache, make_get_request):
     assert response_w_person["uuid"] == test_person_id
     assert response_w_person["full_name"] == "Nate Scholz"
 
+
 async def test_persons_not_found(make_get_request):
     test_person_id = "Something"
 
@@ -26,7 +30,7 @@ async def test_persons_not_found(make_get_request):
     )
 
     assert status == 404
-    assert response ==  {'detail': 'Персона с id Something не найдена'}
+    assert response == {"detail": "Персона с id Something не найдена"}
 
 
 async def test_compare_result_from_elastic_and_redis(
@@ -45,6 +49,8 @@ async def test_compare_result_from_elastic_and_redis(
 
     assert es_status == r_status
     assert response_w_person_from_elastic == response_w_person_from_redis
+
+
 async def test_get_person_from_redis(clean_cache, make_get_request):
     test_person_id = "46c7d430-c1bf-46df-8632-e49e29ee0033"
 
@@ -56,6 +62,7 @@ async def test_get_person_from_redis(clean_cache, make_get_request):
     person_from_cache = json.loads(person_from_cache)
 
     assert Person(**person_from_cache) == Person(**response_w_person_from_elastic)
+
 
 async def test_get_person_films(clean_cache, make_get_request):
     test_person_id = "46c7d430-c1bf-46df-8632-e49e29ee0033"
