@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from testdata.films.all_films import all_films
-from testdata.films.full_info_film import full_info_film
-from testdata.films.similar_films import similar_films
+from testdata.films.films_all_data import all_films
+from testdata.films.film_full_info_data import full_info_film
+from testdata.films.films_similar_data import similar_films
 from testdata.mapping import FullFilm
 
 pytestmark = pytest.mark.asyncio
