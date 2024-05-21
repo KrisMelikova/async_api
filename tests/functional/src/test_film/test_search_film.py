@@ -30,7 +30,6 @@ async def test_films_search_not_found(make_get_request):
     )
 
     assert status == 404
-    assert len(response) == 1
     assert response == {"detail": "Не найдено ни одного фильма"}
 
 
