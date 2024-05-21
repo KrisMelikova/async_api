@@ -20,7 +20,11 @@ async def test_get_persons_by_id_success(clean_cache, make_get_request):
     assert status == 200
     assert response_w_person["uuid"] == test_person_id
     assert response_w_person["full_name"] == "Nate Scholz"
-
+    film = response_w_person["films"]
+    assert len(film) == 1
+    assert film[0]["uuid"] == "f75f574c-1103-4422-8018-07543151fb87"
+    assert len(film[0]["roles"]) == 1
+    assert film[0]["roles"][0] == "actor"
 
 async def test_persons_not_found(make_get_request):
     test_person_id = "Something"
