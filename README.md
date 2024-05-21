@@ -1,3 +1,7 @@
+Ссылка на репозиторий - [репозиторий](https://github.com/SmirnovaT/Async_API_sprint_2/)
+
+Работа выполнена в директории tests/functional - [ссылка на директорию](https://github.com/SmirnovaT/Async_API_sprint_2/tree/main/tests/functional)
+
 # Проектная работа 5 спринта
 
 В папке **tasks** ваша команда найдёт задачи, которые необходимо выполнить во втором спринте модуля "Сервис Async API".
