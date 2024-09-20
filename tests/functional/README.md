@@ -64,12 +64,3 @@ python3 -m pytest src/<file with tests>
 ```
 python3 -m pytest -k <test_name>
 ```
-
-____________________________________________________________________________
-
-Добработки по ETL
-
-[Added ETL for persons](https://github.com/KrisMelikova/new_admin_panel_sprint_3/commit/fce4ba8595ed0ed0b20773bcc14cacd19a37e9ad)
-
-[Added ETL for genres](https://github.com/KrisMelikova/new_admin_panel_sprint_3/commit/d6e4d749a94bcf7225e14fbbd33646c3c6999d58)
-____________________________________________________________________________
